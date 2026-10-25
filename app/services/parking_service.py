@@ -9,7 +9,7 @@ import sqlite3
 from app import clock
 from app.data import session_repo, slot_repo, vehicle_repo
 from app.data.db import transaction
-from app.services import reservation_service
+from app.services import fee_service, reservation_service
 from app.services import ConflictError, ServiceError
 
 
@@ -58,9 +58,8 @@ def _choose_slot(vehicle, now: str, slot_code: str):
 
 
 def active_sessions(actor):
-    if actor["role"] == "admin":
-        return session_repo.all_active()
-    return session_repo.active_for_user(actor["id"])
+    rows = session_repo.all_active() if actor["role"] == "admin" else session_repo.active_for_user(actor["id"])
+    return [{**dict(r), "fee_so_far": fee_service.for_session(r)} for r in rows]
 
 
 def free_slots_for(vehicle):
@@ -69,8 +68,7 @@ def free_slots_for(vehicle):
 
 
 def _fee_for(session, exit_dt):
-    """Fee is attached by the Fee Calculation service (FR-08); none until then."""
-    return None
+    return fee_service.for_session(session, exit_dt)
 
 
 def leave(actor, session_id: int):
@@ -82,8 +80,9 @@ def leave(actor, session_id: int):
         raise ServiceError(f"{s['vehicle_number']} has already exited.")
     exit_dt = clock.now()
     fee = _fee_for(s, exit_dt)
+    status = "paid" if fee == 0 else "unpaid"  # grace-period stays need no payment
     with transaction(immediate=True) as conn:
-        changed = session_repo.record_exit(conn, session_id, clock.to_str(exit_dt), fee, "unpaid")
+        changed = session_repo.record_exit(conn, session_id, clock.to_str(exit_dt), fee, status)
     if not changed:
         raise ConflictError(f"{s['vehicle_number']} has already exited.")
     return session_repo.get(session_id)

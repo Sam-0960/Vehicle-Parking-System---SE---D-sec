@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Parking rates{% endblock %}
+{% block content %}
+<h1>Parking rates</h1>
+<section class="grid three">
+  {% for r in rates %}
+  <div class="card"><h3>{{ r.vehicle_type|capitalize }}</h3><p>{{ describe(r) }}</p></div>
+  {% endfor %}
+</section>
+{% endblock %}

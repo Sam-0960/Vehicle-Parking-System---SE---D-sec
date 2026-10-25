@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf with context %}
+{% block title %}Rate settings{% endblock %}
+{% block content %}
+<h1>Rate settings</h1>
+<p class="muted">Changes apply to vehicles that exit after you save.</p>
+<section class="grid three">
+  {% for r in rates %}
+  <form method="post" class="card">
+    {{ csrf() }}<input type="hidden" name="vehicle_type" value="{{ r.vehicle_type }}">
+    <h3>{{ r.vehicle_type|capitalize }}</h3>
+    <label>Per started hour (₹) <input type="number" step="0.5" min="1" name="hourly_rate" value="{{ r.hourly_rate }}"></label>
+    <label>Daily cap (₹) <input type="number" step="1" min="1" name="daily_cap" value="{{ r.daily_cap }}"></label>
+    <label>Free minutes <input type="number" min="0" max="120" name="grace_minutes" value="{{ r.grace_minutes }}"></label>
+    <button type="submit">Save</button>
+  </form>
+  {% endfor %}
+</section>
+{% endblock %}
