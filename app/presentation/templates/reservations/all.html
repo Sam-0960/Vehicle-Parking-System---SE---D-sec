@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, status with context %}
+{% block title %}Reservations{% endblock %}
+{% block content %}
+<h1>Upcoming reservations</h1>
+<section class="card">
+  {% if reservations %}
+  <div class="table-wrap"><table>
+    <tr><th>Slot</th><th>Vehicle</th><th>From</th><th>To</th><th>Status</th><th></th></tr>
+    {% for r in reservations %}
+    <tr><td><strong>{{ r.slot_code }}</strong></td><td>{{ r.vehicle_number }}</td>
+      <td>{{ r.start_time[:16] }}</td><td>{{ r.end_time[:16] }}</td><td>{{ status(r.status) }}</td>
+      <td><form method="post" action="{{ url_for('reservations.cancel', public_id=r.public_id) }}" class="inline">
+        {{ csrf() }}<button class="link">Cancel</button></form></td></tr>
+    {% endfor %}
+  </table></div>
+  {% else %}<p class="muted">No upcoming reservations.</p>{% endif %}
+</section>
+{% endblock %}

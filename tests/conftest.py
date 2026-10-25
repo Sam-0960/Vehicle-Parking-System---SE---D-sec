@@ -104,3 +104,9 @@ def session_id_of(app, number="KA01AB1234"):
 
 def unpark(client, app, number="KA01AB1234"):
     return post(client, f"/parking/exit/{session_id_of(app, number)}", page="/parking/")
+
+
+def reserve(client, app, slot="A01", start="2026-10-26T10:00", end="2026-10-26T12:00",
+            number="KA01AB1234", key=""):
+    return post(client, "/reservations/", {"vehicle_id": vehicle_id(app, number), "slot": slot,
+                                           "start": start, "end": end, "form_key": key})

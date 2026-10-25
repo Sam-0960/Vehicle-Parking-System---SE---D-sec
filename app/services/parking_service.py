@@ -9,6 +9,7 @@ import sqlite3
 from app import clock
 from app.data import session_repo, slot_repo, vehicle_repo
 from app.data.db import transaction
+from app.services import reservation_service
 from app.services import ConflictError, ServiceError
 
 
@@ -31,7 +32,8 @@ def enter(actor, vehicle_id=None, number=None, slot_code: str = ""):
             if session_repo.active_for_vehicle(v["id"]):
                 raise ServiceError(f"{v['number']} is already parked.")
 
-            slot = _choose_slot(v, now, slot_code)
+            reserved = reservation_service.claim_for_entry(conn, v["id"], now)
+            slot = reserved if reserved is not None and not slot_code else _choose_slot(v, now, slot_code)
             session_id = session_repo.insert_entry(conn, v["id"], slot["id"], now)
     except sqlite3.IntegrityError:
         raise ConflictError("That slot was just taken. Please choose another slot.")
