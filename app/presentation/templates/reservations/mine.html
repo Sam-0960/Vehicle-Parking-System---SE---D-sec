@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, status with context %}
+{% block title %}Reservations{% endblock %}
+{% block content %}
+<h1>Reservations</h1>
+<div class="grid two">
+<section class="card">
+  <h2>Reserve a slot</h2>
+  {% if not vehicles %}
+    <p class="muted">Add a vehicle before reserving.</p>
+  {% else %}
+  <form method="post">
+    {{ csrf() }}<input type="hidden" name="form_key" value="{{ form_key }}">
+    <label>Vehicle
+      <select name="vehicle_id" id="vehicle">
+        {% for v in vehicles %}<option value="{{ v.id }}" data-type="{{ v.type }}">{{ v.number }} ({{ v.type }})</option>{% endfor %}
+      </select></label>
+    <label>Slot
+      <select name="slot" id="slot">
+        {% for t, slots in slots_by_type.items() %}{% for s in slots %}
+          <option value="{{ s.code }}" data-type="{{ t }}">{{ s.code }} · {{ t }}</option>
+        {% endfor %}{% endfor %}
+      </select></label>
+    <div class="row">
+      <label>From <input type="datetime-local" name="start" value="{{ form.get('start', default_start) }}" required></label>
+      <label>To <input type="datetime-local" name="end" value="{{ form.get('end', default_end) }}" required></label>
+    </div>
+    <p class="hint">Up to 24 hours, at most 7 days ahead, 3 open reservations per person.</p>
+    <button type="submit">Reserve</button>
+  </form>
+  <script>
+    (function () {
+      var v = document.getElementById('vehicle'), s = document.getElementById('slot');
+      function sync() {
+        var t = v.options[v.selectedIndex].dataset.type, first = null;
+        for (var i = 0; i < s.options.length; i++) {
+          var ok = s.options[i].dataset.type === t;
+          s.options[i].hidden = !ok;
+          if (ok && first === null) first = i;
+        }
+        if (s.options[s.selectedIndex] && s.options[s.selectedIndex].hidden && first !== null) s.selectedIndex = first;
+      }
+      v.addEventListener('change', sync); sync();
+    })();
+  </script>
+  {% endif %}
+</section>
+<section class="card">
+  <h2>Your reservations</h2>
+  {% if reservations %}
+  <div class="table-wrap"><table>
+    <tr><th>Slot</th><th>Vehicle</th><th>When</th><th>Status</th><th></th></tr>
+    {% for r in reservations %}
+    <tr>
+      <td><strong>{{ r.slot_code }}</strong></td>
+      <td>{{ r.vehicle_number }}</td>
+      <td>{{ r.start_time[5:16] }} → {{ r.end_time[5:16] }}</td>
+      <td>{{ status(r.status) }}</td>
+      <td>{% if r.status == 'confirmed' %}
+        <form method="post" action="{{ url_for('reservations.cancel', public_id=r.public_id) }}" class="inline">
+          {{ csrf() }}<button class="link">Cancel</button></form>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table></div>
+  {% else %}<p class="muted">No reservations yet.</p>{% endif %}
+</section>
+</div>
+{% endblock %}
