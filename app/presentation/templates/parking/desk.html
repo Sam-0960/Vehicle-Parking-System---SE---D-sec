@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, status with context %}
+{% block title %}Park / Exit{% endblock %}
+{% block content %}
+<h1>{% if g.user.role == 'admin' %}Entry / Exit Desk{% else %}Park / Exit{% endif %}</h1>
+
+<div class="grid two">
+<section class="card">
+  <h2>Vehicle entry</h2>
+  {% if g.user.role == 'admin' %}
+    <form method="post" action="{{ url_for('parking.enter') }}">
+      {{ csrf() }}
+      <label>Vehicle number <input name="number" placeholder="KA01AB1234" required maxlength="15"></label>
+      <label>Slot <span class="hint">Leave empty to assign the first free slot</span>
+        <input name="slot" placeholder="A01" maxlength="6"></label>
+      <button type="submit">Record entry</button>
+    </form>
+  {% else %}
+    {% set parkable = vehicles|rejectattr('is_parked')|list %}
+    {% if not vehicles %}
+      <p class="muted">Add a vehicle first.</p>
+      {% if has_feature('vehicles') %}<a class="btn" href="{{ url_for('vehicles.list_vehicles') }}">Add vehicle</a>{% endif %}
+    {% elif not parkable %}
+      <p class="muted">All your vehicles are parked.</p>
+    {% else %}
+      {% for v in parkable %}
+        <form method="post" action="{{ url_for('parking.enter') }}" class="row">
+          {{ csrf() }}<input type="hidden" name="vehicle_id" value="{{ v.id }}">
+          <label>{{ v.number }} <span class="hint">{{ v.type }}</span>
+            <select name="slot">
+              <option value="">First free slot</option>
+              {% for s in slot_options[v.id] %}<option value="{{ s.code }}">{{ s.code }}</option>{% endfor %}
+            </select></label>
+          <div><button type="submit" {% if not slot_options[v.id] %}disabled{% endif %}>Park</button></div>
+        </form>
+        {% if not slot_options[v.id] %}<p class="flash warning">No {{ v.type }} slot is available right now.</p>{% endif %}
+      {% endfor %}
+    {% endif %}
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>Currently parked ({{ sessions|length }})</h2>
+  {% if sessions %}
+  <div class="table-wrap"><table>
+    <tr><th>Vehicle</th><th>Slot</th><th>Since</th><th></th></tr>
+    {% for s in sessions %}
+    <tr>
+      <td><strong>{{ s.vehicle_number }}</strong></td>
+      <td>{{ s.slot_code }}</td>
+      <td>{{ s.entry_time[5:16] }}</td>
+      <td>
+        {% if 'exit' in parking_actions %}
+        <form method="post" action="{{ url_for('parking.exit', session_id=s.id) }}" class="inline">
+          {{ csrf() }}<button class="small">Exit</button>
+        </form>
+        {% else %}{{ status('active') }}{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table></div>
+  {% else %}<p class="muted">No vehicles parked.</p>{% endif %}
+</section>
+</div>
+{% endblock %}

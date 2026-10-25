@@ -81,3 +81,14 @@ def add_vehicle(client, number="KA01AB1234", vtype="car", owner="Ravi"):
 
 def add_slot(admin, code="A01", slot_type="car"):
     return post(admin, "/admin/slots/", {"code": code, "slot_type": slot_type})
+
+
+def vehicle_id(app, number="KA01AB1234"):
+    from app.data.db import get_db
+    with app.app_context():
+        return get_db().execute("SELECT id FROM vehicles WHERE number = ?", (number,)).fetchone()["id"]
+
+
+def park(client, app, number="KA01AB1234", slot=""):
+    return post(client, "/parking/enter", {"vehicle_id": vehicle_id(app, number), "slot": slot},
+                page="/parking/")
