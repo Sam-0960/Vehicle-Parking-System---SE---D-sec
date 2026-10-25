@@ -46,3 +46,26 @@ def has_history(slot_id: int) -> bool:
         "SELECT 1 FROM parking_sessions WHERE slot_id = ? UNION ALL "
         "SELECT 1 FROM reservations WHERE slot_id = ? LIMIT 1", (slot_id, slot_id)
     ).fetchone() is not None
+
+
+def availability(now: str):
+    """Every active slot with its current state, in one query (NFR-01)."""
+    return get_db().execute(
+        """
+        SELECT s.id, s.code, s.slot_type,
+               p.id AS session_id, v.number AS vehicle_number, p.entry_time,
+               r.public_id AS reservation_id, r.end_time AS reserved_until,
+               CASE WHEN p.id IS NOT NULL THEN 'occupied'
+                    WHEN r.id IS NOT NULL THEN 'reserved'
+                    ELSE 'available' END AS state
+        FROM slots s
+        LEFT JOIN parking_sessions p ON p.slot_id = s.id AND p.exit_time IS NULL
+        LEFT JOIN vehicles v ON v.id = p.vehicle_id
+        LEFT JOIN reservations r ON r.slot_id = s.id AND r.status = 'confirmed'
+                                 AND r.start_time <= ? AND r.end_time > ?
+        WHERE s.is_active = 1
+        GROUP BY s.id
+        ORDER BY s.code
+        """,
+        (now, now),
+    ).fetchall()
