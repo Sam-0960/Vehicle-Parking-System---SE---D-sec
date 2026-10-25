@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf with context %}
+{% block title %}Edit {{ vehicle.number }}{% endblock %}
+{% block content %}
+<section class="card narrow">
+  <h1>Edit vehicle</h1>
+  <form method="post">
+    {{ csrf() }}
+    <label>Vehicle number <input name="number" value="{{ vehicle.number }}" required maxlength="15"></label>
+    <label>Type
+      <select name="type">{% for t in types %}<option value="{{ t }}" {% if vehicle.type == t %}selected{% endif %}>{{ t|capitalize }}</option>{% endfor %}</select></label>
+    <label>Owner name <input name="owner_name" value="{{ vehicle.owner_name }}" required maxlength="80"></label>
+    <button type="submit">Save</button>
+    <a class="btn ghost" href="{{ url_for('vehicles.list_vehicles') }}">Cancel</a>
+  </form>
+</section>
+{% endblock %}

@@ -73,3 +73,7 @@ def admin_client(app):
     c = app.test_client()
     login(c, "admin@test.com")
     return c
+
+
+def add_vehicle(client, number="KA01AB1234", vtype="car", owner="Ravi"):
+    return post(client, "/vehicles/", {"number": number, "type": vtype, "owner_name": owner})
