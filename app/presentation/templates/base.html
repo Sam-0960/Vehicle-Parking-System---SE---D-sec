@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Vehicle Parking System{% endblock %} · ParkPES</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="{{ url_for('main.index') }}"><span class="logo">P</span> ParkPES</a>
+  <nav>
+    {% if g.user %}
+      {% if g.user.role == 'admin' %}
+        {% if has_feature('admin') %}<a href="{{ url_for('admin.dashboard') }}">Dashboard</a>{% endif %}
+        {% if has_feature('slots') %}<a href="{{ url_for('slots.manage') }}">Slots</a>{% endif %}
+        {% if has_feature('availability') %}<a href="{{ url_for('availability.view') }}">Availability</a>{% endif %}
+        {% if has_feature('parking') %}<a href="{{ url_for('parking.desk') }}">Entry / Exit</a>{% endif %}
+        {% if has_feature('search') %}<a href="{{ url_for('search.vehicles') }}">Search</a>{% endif %}
+        {% if has_feature('reports') %}<a href="{{ url_for('reports.index') }}">Reports</a>{% endif %}
+      {% else %}
+        {% if has_feature('availability') %}<a href="{{ url_for('availability.view') }}">Availability</a>{% endif %}
+        {% if has_feature('vehicles') %}<a href="{{ url_for('vehicles.list_vehicles') }}">My Vehicles</a>{% endif %}
+        {% if has_feature('parking') %}<a href="{{ url_for('parking.desk') }}">Park / Exit</a>{% endif %}
+        {% if has_feature('reservations') %}<a href="{{ url_for('reservations.mine') }}">Reservations</a>{% endif %}
+        {% if has_feature('payments') %}<a href="{{ url_for('payments.pending') }}">Pay</a>{% endif %}
+        {% if has_feature('history') %}<a href="{{ url_for('history.mine') }}">History</a>{% endif %}
+      {% endif %}
+      {% if has_feature('notifications') %}
+        {% set unread = unread_notifications() %}
+        <a href="{{ url_for('notifications.inbox') }}">Alerts{% if unread %} <span class="badge">{{ unread }}</span>{% endif %}</a>
+      {% endif %}
+      <span class="who">{{ g.user.name }}{% if g.user.role == 'admin' %} · admin{% endif %}</span>
+      {% if has_feature('auth') %}
+        <form method="post" action="{{ url_for('auth.logout') }}" class="inline">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <button class="link">Log out</button>
+        </form>
+      {% endif %}
+    {% elif has_feature('auth') %}
+      <a href="{{ url_for('auth.login') }}">Log in</a>
+      <a class="btn small" href="{{ url_for('auth.register') }}">Register</a>
+    {% endif %}
+  </nav>
+</header>
+
+<main class="container">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="flash {{ category }}">{{ message }}</div>
+    {% endfor %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="footer">Vehicle Parking System · SE Mini Project · PES University</footer>
+</body>
+</html>

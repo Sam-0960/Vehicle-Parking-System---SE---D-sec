@@ -1,0 +1,5 @@
+{% macro csrf() %}<input type="hidden" name="_csrf" value="{{ csrf_token() }}">{% endmacro %}
+
+{% macro status(value) %}<span class="pill {{ value }}">{{ value }}</span>{% endmacro %}
+
+{% macro money(value) %}₹{{ '%.2f'|format(value or 0) }}{% endmacro %}
