@@ -6,7 +6,7 @@ from app.security import audit, login_required, rate_limit
 from app.services import ServiceError, parking_service, vehicle_service
 
 bp = Blueprint("parking", __name__, url_prefix="/parking")
-PARKING_ACTIONS = {"enter"}
+PARKING_ACTIONS = {"enter", "exit"}
 
 
 @bp.route("/")
@@ -39,3 +39,25 @@ def enter():
         audit("vehicle_entry", f"{s['vehicle_number']} -> {s['slot_code']}")
         flash(f"{s['vehicle_number']} parked in slot {s['slot_code']} at {s['entry_time'][11:16]}.", "success")
     return redirect(url_for("parking.desk"))
+
+
+@bp.route("/exit/<int:session_id>", methods=["POST"])
+@login_required
+@rate_limit("exit", "RATE_LIMIT_WRITE")
+def exit(session_id):
+    try:
+        s = parking_service.leave(g.user, session_id)
+    except ServiceError as e:
+        flash(str(e), "error")
+        return redirect(url_for("parking.desk"))
+    audit("vehicle_exit", f"{s['vehicle_number']} <- {s['slot_code']}")
+    msg = f"{s['vehicle_number']} exited slot {s['slot_code']} at {s['exit_time'][11:16]}."
+    if s["fee"] is not None:
+        msg += f" Fee: ₹{s['fee']:.2f}."
+    flash(msg, "success")
+    return redirect(_after_exit(s))
+
+
+def _after_exit(session):
+    """Hook for the payment flow; stays on the desk until Payment Management exists."""
+    return url_for("parking.desk")

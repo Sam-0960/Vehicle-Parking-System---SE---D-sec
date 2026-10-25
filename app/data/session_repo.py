@@ -52,3 +52,12 @@ def insert_entry(conn, vehicle_id: int, slot_id: int, entry_time: str) -> int:
         "INSERT INTO parking_sessions (vehicle_id, slot_id, entry_time) VALUES (?, ?, ?)",
         (vehicle_id, slot_id, entry_time),
     ).lastrowid
+
+
+def record_exit(conn, session_id: int, exit_time: str, fee, status: str) -> int:
+    """Only closes a session that is still open, so a repeated exit request changes nothing."""
+    return conn.execute(
+        "UPDATE parking_sessions SET exit_time = ?, fee = ?, status = ? "
+        "WHERE id = ? AND exit_time IS NULL",
+        (exit_time, fee, status, session_id),
+    ).rowcount

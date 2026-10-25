@@ -64,3 +64,24 @@ def active_sessions(actor):
 def free_slots_for(vehicle):
     return session_repo.free_slots(vehicle["type"], clock.to_str(clock.now()),
                                    exclude_reserved_for_user=vehicle["user_id"])
+
+
+def _fee_for(session, exit_dt):
+    """Fee is attached by the Fee Calculation service (FR-08); none until then."""
+    return None
+
+
+def leave(actor, session_id: int):
+    """Record vehicle exit and release the slot. Returns the closed session row."""
+    s = session_repo.get(session_id)
+    if s is None or (actor["role"] != "admin" and s["user_id"] != actor["id"]):
+        raise ServiceError("Parking session not found.")
+    if s["exit_time"]:
+        raise ServiceError(f"{s['vehicle_number']} has already exited.")
+    exit_dt = clock.now()
+    fee = _fee_for(s, exit_dt)
+    with transaction(immediate=True) as conn:
+        changed = session_repo.record_exit(conn, session_id, clock.to_str(exit_dt), fee, "unpaid")
+    if not changed:
+        raise ConflictError(f"{s['vehicle_number']} has already exited.")
+    return session_repo.get(session_id)

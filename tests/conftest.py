@@ -92,3 +92,15 @@ def vehicle_id(app, number="KA01AB1234"):
 def park(client, app, number="KA01AB1234", slot=""):
     return post(client, "/parking/enter", {"vehicle_id": vehicle_id(app, number), "slot": slot},
                 page="/parking/")
+
+
+def session_id_of(app, number="KA01AB1234"):
+    from app.data.db import get_db
+    with app.app_context():
+        return get_db().execute(
+            "SELECT p.id FROM parking_sessions p JOIN vehicles v ON v.id = p.vehicle_id "
+            "WHERE v.number = ? ORDER BY p.id DESC", (number,)).fetchone()["id"]
+
+
+def unpark(client, app, number="KA01AB1234"):
+    return post(client, f"/parking/exit/{session_id_of(app, number)}", page="/parking/")
