@@ -113,3 +113,11 @@ INSERT OR IGNORE INTO rates (vehicle_type, hourly_rate, daily_cap, grace_minutes
     ('car',   50,  400, 10),
     ('bike',  20,  150, 10),
     ('truck', 100, 800, 10);
+
+-- Server-side login sessions, so logging out really invalidates the cookie (T-12).
+CREATE TABLE IF NOT EXISTS login_sessions (
+    token       TEXT    PRIMARY KEY,
+    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+    revoked     INTEGER NOT NULL DEFAULT 0
+);

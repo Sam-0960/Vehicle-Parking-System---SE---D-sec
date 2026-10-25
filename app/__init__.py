@@ -32,17 +32,18 @@ def create_app(config_object=Config, **overrides) -> Flask:
 
 
 def _register_blueprints(app: Flask) -> None:
-    from app.presentation.routes import main
+    from app.presentation.routes import auth, main
     app.register_blueprint(main.bp)
+    app.register_blueprint(auth.bp)
 
 
 def _register_hooks(app: Flask) -> None:
     @app.before_request
     def load_user():
-        uid = session.get("uid")
-        g.user = user_repo.get_by_id(uid) if uid else None
-        if uid and g.user is None:
-            session.clear()
+        sid = session.get("sid")
+        g.user = user_repo.get_by_session(sid) if sid else None
+        if sid and g.user is None:
+            session.clear()  # revoked or unknown session token
 
     @app.before_request
     def csrf_protect():
