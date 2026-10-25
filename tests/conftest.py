@@ -34,3 +34,42 @@ def post(client, path, data=None, page=None, **kw):
     data = dict(data or {})
     data["_csrf"] = csrf_of(client, page or path)
     return client.post(path, data=data, **kw)
+
+
+# ---------- account helpers ----------
+
+PASSWORD = "Park@123"  # test data from the Human Test Plan
+
+
+def register(client, name="Ravi", email="ravi@test.com", password=PASSWORD):
+    return post(client, "/register", {"name": name, "email": email,
+                                      "password": password, "confirm": password})
+
+
+def login(client, email="ravi@test.com", password=PASSWORD):
+    return post(client, "/login", {"email": email, "password": password})
+
+
+def logout(client):
+    return post(client, "/logout", page="/")
+
+
+def make_admin(app, email="admin@test.com", password=PASSWORD):
+    from app.services import auth_service
+    with app.app_context():
+        return auth_service.register("Admin", email, password, password, role="admin")
+
+
+@pytest.fixture
+def user_client(app, client):
+    register(client)
+    login(client)
+    return client
+
+
+@pytest.fixture
+def admin_client(app):
+    make_admin(app)
+    c = app.test_client()
+    login(c, "admin@test.com")
+    return c
