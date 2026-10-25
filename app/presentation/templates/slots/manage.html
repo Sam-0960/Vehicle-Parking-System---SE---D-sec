@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, status with context %}
+{% block title %}Slots{% endblock %}
+{% block content %}
+<h1>Parking Slots</h1>
+<div class="grid two">
+  <section class="card">
+    <h2>Add a slot</h2>
+    <form method="post">
+      {{ csrf() }}
+      <div class="row">
+        <label>Slot ID <input name="code" placeholder="A01" required maxlength="6"></label>
+        <label>Type <select name="slot_type">{% for t in types %}<option value="{{ t }}">{{ t|capitalize }}</option>{% endfor %}</select></label>
+      </div>
+      <button type="submit">Add slot</button>
+    </form>
+  </section>
+  <section class="card">
+    <h2>Add many</h2>
+    <form method="post">
+      {{ csrf() }}<input type="hidden" name="mode" value="range">
+      <div class="row">
+        <label>Prefix <input name="prefix" placeholder="B" required maxlength="3"></label>
+        <label>From <input type="number" name="start" value="1" min="1" max="999"></label>
+        <label>To <input type="number" name="end" value="10" min="1" max="999"></label>
+        <label>Type <select name="slot_type">{% for t in types %}<option value="{{ t }}">{{ t|capitalize }}</option>{% endfor %}</select></label>
+      </div>
+      <button type="submit">Add range</button>
+    </form>
+  </section>
+</div>
+<section class="card">
+  <h2>All slots ({{ slots|length }})</h2>
+  {% if slots %}
+  <div class="table-wrap"><table>
+    <tr><th>Slot</th><th>Status</th><th>Type / active</th><th></th></tr>
+    {% for s in slots %}
+    <tr>
+      <td><strong>{{ s.code }}</strong></td>
+      <td>{% if not s.is_active %}{{ status('inactive') }}{% elif s.is_occupied %}{{ status('occupied') }}{% else %}{{ status('available') }}{% endif %}</td>
+      <td>
+        <form method="post" action="{{ url_for('slots.update', slot_id=s.id) }}" class="row">
+          {{ csrf() }}
+          <select name="slot_type">{% for t in types %}<option value="{{ t }}" {% if s.slot_type == t %}selected{% endif %}>{{ t|capitalize }}</option>{% endfor %}</select>
+          <select name="is_active"><option value="1" {% if s.is_active %}selected{% endif %}>Active</option><option value="0" {% if not s.is_active %}selected{% endif %}>Inactive</option></select>
+          <button class="small ghost">Save</button>
+        </form>
+      </td>
+      <td>
+        <form method="post" action="{{ url_for('slots.delete', slot_id=s.id) }}" class="inline">
+          {{ csrf() }}<button class="small danger">Remove</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table></div>
+  {% else %}<p class="muted">No slots yet.</p>{% endif %}
+</section>
+{% endblock %}
