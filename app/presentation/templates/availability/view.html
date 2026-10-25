@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Availability{% endblock %}
+{% block content %}
+<div class="spread">
+  <h1>Slot Availability</h1>
+  <form method="get" class="row" style="max-width:260px">
+    <select name="type" onchange="this.form.submit()">
+      <option value="">All types</option>
+      {% for t in types %}<option value="{{ t }}" {% if selected == t %}selected{% endif %}>{{ t|capitalize }}</option>{% endfor %}
+    </select>
+  </form>
+</div>
+<section class="grid four">
+  <div class="card"><div class="stat">{{ data.counts.available }}</div><div class="stat-label">Available</div></div>
+  <div class="card"><div class="stat">{{ data.counts.occupied }}</div><div class="stat-label">Occupied</div></div>
+  <div class="card"><div class="stat">{{ data.counts.reserved }}</div><div class="stat-label">Reserved now</div></div>
+  <div class="card"><div class="stat">{{ data.total }}</div><div class="stat-label">Total slots</div></div>
+</section>
+{% if data.total == 0 %}
+  <div class="card"><p class="muted">No parking slots are set up yet.</p></div>
+{% elif data.counts.available == 0 %}
+  <div class="flash warning">No parking slot is currently available. Please try again shortly.</div>
+{% endif %}
+<section class="slot-grid">
+  {% for s in data.slots %}
+  <div class="slot {{ s.state }}">
+    <strong>{{ s.code }}</strong>
+    <small>{{ s.slot_type|capitalize }} · {{ s.state }}</small>
+    {% if is_admin and s.vehicle_number %}<small>{{ s.vehicle_number }}</small>{% endif %}
+  </div>
+  {% endfor %}
+</section>
+{% endblock %}
