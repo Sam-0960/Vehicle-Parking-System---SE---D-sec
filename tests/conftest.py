@@ -77,3 +77,7 @@ def admin_client(app):
 
 def add_vehicle(client, number="KA01AB1234", vtype="car", owner="Ravi"):
     return post(client, "/vehicles/", {"number": number, "type": vtype, "owner_name": owner})
+
+
+def add_slot(admin, code="A01", slot_type="car"):
+    return post(admin, "/admin/slots/", {"code": code, "slot_type": slot_type})
