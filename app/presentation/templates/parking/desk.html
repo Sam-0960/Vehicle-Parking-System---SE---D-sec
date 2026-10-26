@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% from "_macros.html" import csrf, status with context %}
-{% block title %}Park / Exit{% endblock %}
+{% block title %}Park / Exit{% if has_feature('fees') %}<p class="muted"><a href="{{ url_for('fees.tariff') }}">See parking rates</a></p>{% endif %}
+{% endblock %}
 {% block content %}
 <h1>{% if g.user.role == 'admin' %}Entry / Exit Desk{% else %}Park / Exit{% endif %}</h1>
 
@@ -43,12 +44,13 @@
   <h2>Currently parked ({{ sessions|length }})</h2>
   {% if sessions %}
   <div class="table-wrap"><table>
-    <tr><th>Vehicle</th><th>Slot</th><th>Since</th><th></th></tr>
+    <tr><th>Vehicle</th><th>Slot</th><th>Since</th><th>Fee so far</th><th></th></tr>
     {% for s in sessions %}
     <tr>
       <td><strong>{{ s.vehicle_number }}</strong></td>
       <td>{{ s.slot_code }}</td>
       <td>{{ s.entry_time[5:16] }}</td>
+      <td>₹{{ '%.2f'|format(s.fee_so_far) }}</td>
       <td>
         {% if 'exit' in parking_actions %}
         <form method="post" action="{{ url_for('parking.exit', session_id=s.id) }}" class="inline">
@@ -62,4 +64,5 @@
   {% else %}<p class="muted">No vehicles parked.</p>{% endif %}
 </section>
 </div>
+{% if has_feature('fees') %}<p class="muted"><a href="{{ url_for('fees.tariff') }}">See parking rates</a></p>{% endif %}
 {% endblock %}

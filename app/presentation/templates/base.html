@@ -17,6 +17,7 @@
         {% if has_feature('availability') %}<a href="{{ url_for('availability.view') }}">Availability</a>{% endif %}
         {% if has_feature('parking') %}<a href="{{ url_for('parking.desk') }}">Entry / Exit</a>{% endif %}
         {% if has_feature('reservations') %}<a href="{{ url_for('reservations.mine') }}">Reservations</a>{% endif %}
+        {% if has_feature('fees') %}<a href="{{ url_for('fees.settings') }}">Rates</a>{% endif %}
         {% if has_feature('search') %}<a href="{{ url_for('search.vehicles') }}">Search</a>{% endif %}
         {% if has_feature('reports') %}<a href="{{ url_for('reports.index') }}">Reports</a>{% endif %}
       {% else %}
