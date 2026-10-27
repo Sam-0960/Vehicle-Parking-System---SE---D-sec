@@ -59,5 +59,6 @@ def exit(session_id):
 
 
 def _after_exit(session):
-    """Hook for the payment flow; stays on the desk until Payment Management exists."""
+    if session["status"] == "unpaid":
+        return url_for("payments.pay", session_id=session["id"])
     return url_for("parking.desk")

@@ -61,3 +61,13 @@ def record_exit(conn, session_id: int, exit_time: str, fee, status: str) -> int:
         "WHERE id = ? AND exit_time IS NULL",
         (exit_time, fee, status, session_id),
     ).rowcount
+
+
+def unpaid_for_user(user_id: int):
+    return get_db().execute(
+        _SELECT + "WHERE v.user_id = ? AND p.status = 'unpaid' ORDER BY p.exit_time DESC", (user_id,)
+    ).fetchall()
+
+
+def all_unpaid():
+    return get_db().execute(_SELECT + "WHERE p.status = 'unpaid' ORDER BY p.exit_time DESC").fetchall()

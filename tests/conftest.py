@@ -110,3 +110,14 @@ def reserve(client, app, slot="A01", start="2026-10-26T10:00", end="2026-10-26T1
             number="KA01AB1234", key=""):
     return post(client, "/reservations/", {"vehicle_id": vehicle_id(app, number), "slot": slot,
                                            "start": start, "end": end, "form_key": key})
+
+
+GOOD_CARD = {"method": "card", "card_number": "4111 1111 1111 1111", "expiry": "12/30", "cvv": "123"}
+BAD_CARD = {"method": "card", "card_number": "4000 0000 0000 0002", "expiry": "12/30", "cvv": "123"}
+
+
+def pay(client, app, details=None, number="KA01AB1234", key=""):
+    sid = session_id_of(app, number)
+    data = dict(details or GOOD_CARD)
+    data["form_key"] = key
+    return post(client, f"/payments/session/{sid}", data)

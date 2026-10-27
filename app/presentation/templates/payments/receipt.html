@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% from "_macros.html" import money, status with context %}
+{% block title %}Receipt{% endblock %}
+{% block content %}
+<section class="card narrow">
+  <h1>Payment complete</h1>
+  <p>{{ status(p.status) }}</p>
+  <table>
+    <tr><th>Receipt</th><td>{{ p.public_id }}</td></tr>
+    <tr><th>Vehicle</th><td>{{ p.vehicle_number }}</td></tr>
+    <tr><th>Slot</th><td>{{ p.slot_code }}</td></tr>
+    <tr><th>Entry</th><td>{{ p.entry_time }}</td></tr>
+    <tr><th>Exit</th><td>{{ p.exit_time }}</td></tr>
+    <tr><th>Amount</th><td>{{ money(p.amount) }}</td></tr>
+    <tr><th>Paid by</th><td>{{ p.reference }}</td></tr>
+    <tr><th>Time</th><td>{{ p.created_at }}</td></tr>
+  </table>
+  <p>Your parking session is complete.</p>
+</section>
+{% endblock %}
