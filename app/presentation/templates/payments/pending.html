@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% from "_macros.html" import money with context %}
+{% block title %}Payments due{% endblock %}
+{% block content %}
+<h1>Payments due</h1>
+<section class="card">
+  {% if sessions %}
+  <div class="table-wrap"><table>
+    <tr><th>Vehicle</th><th>Slot</th><th>Parked</th><th>Fee</th><th></th></tr>
+    {% for s in sessions %}
+    <tr><td><strong>{{ s.vehicle_number }}</strong></td><td>{{ s.slot_code }}</td>
+      <td>{{ s.entry_time[5:16] }} → {{ s.exit_time[11:16] }}</td><td>{{ money(s.fee) }}</td>
+      <td><a class="btn small" href="{{ url_for('payments.pay', session_id=s.id) }}">Pay</a></td></tr>
+    {% endfor %}
+  </table></div>
+  {% else %}<p class="muted">Nothing to pay.</p>{% endif %}
+</section>
+{% endblock %}

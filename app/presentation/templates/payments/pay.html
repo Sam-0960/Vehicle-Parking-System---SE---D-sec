@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, money with context %}
+{% block title %}Pay{% endblock %}
+{% block content %}
+<section class="card narrow">
+  <h1>Pay {{ money(s.fee) }}</h1>
+  <p class="muted">{{ s.vehicle_number }} · slot {{ s.slot_code }} · {{ s.entry_time[5:16] }} → {{ s.exit_time[5:16] }}</p>
+  <form method="post" autocomplete="off">
+    {{ csrf() }}<input type="hidden" name="form_key" value="{{ form_key }}">
+    <label>Payment method
+      <select name="method" id="method">
+        {% for m in methods %}<option value="{{ m }}">{{ {'card': 'Debit / credit card', 'upi': 'UPI', 'cash': 'Cash at desk'}[m] }}</option>{% endfor %}
+      </select></label>
+    <div data-for="card">
+      <label>Card number <input name="card_number" inputmode="numeric" maxlength="23" placeholder="4111 1111 1111 1111"></label>
+      <div class="row">
+        <label>Expiry <input name="expiry" placeholder="MM/YY" maxlength="5"></label>
+        <label>CVV <input name="cvv" type="password" inputmode="numeric" maxlength="4"></label>
+      </div>
+    </div>
+    <div data-for="upi" hidden>
+      <label>UPI ID <input name="upi_id" placeholder="name@okbank" maxlength="100"></label>
+    </div>
+    <p class="hint">Test mode: card 4111 1111 1111 1111 succeeds, 4000 0000 0000 0002 is declined; UPI IDs starting with "fail" are declined. Card details are sent to the gateway and never stored.</p>
+    <button type="submit">Pay {{ money(s.fee) }}</button>
+  </form>
+</section>
+<script>
+  (function () {
+    var m = document.getElementById('method');
+    function sync() {
+      document.querySelectorAll('[data-for]').forEach(function (el) { el.hidden = el.dataset.for !== m.value; });
+    }
+    m.addEventListener('change', sync); sync();
+  })();
+</script>
+{% endblock %}
