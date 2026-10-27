@@ -71,3 +71,20 @@ def unpaid_for_user(user_id: int):
 
 def all_unpaid():
     return get_db().execute(_SELECT + "WHERE p.status = 'unpaid' ORDER BY p.exit_time DESC").fetchall()
+
+
+def history(user_id=None, vehicle_id=None, limit: int = 200):
+    """Completed sessions with duration; filtered by owner and/or vehicle."""
+    sql = (_SELECT.replace("SELECT p.*,", "SELECT p.*, "
+           "CAST(round((julianday(p.exit_time) - julianday(p.entry_time)) * 1440) AS INTEGER) AS minutes,")
+           + "WHERE p.exit_time IS NOT NULL ")
+    args = []
+    if user_id is not None:
+        sql += "AND v.user_id = ? "
+        args.append(user_id)
+    if vehicle_id is not None:
+        sql += "AND v.id = ? "
+        args.append(vehicle_id)
+    sql += "ORDER BY p.exit_time DESC LIMIT ?"
+    args.append(limit)
+    return get_db().execute(sql, args).fetchall()
