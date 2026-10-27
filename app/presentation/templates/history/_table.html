@@ -1,0 +1,18 @@
+{% from "_macros.html" import money, status with context %}
+<section class="grid three">
+  <div class="card"><div class="stat">{{ data.count }}</div><div class="stat-label">Sessions</div></div>
+  <div class="card"><div class="stat">{{ data.total_time }}</div><div class="stat-label">Time parked</div></div>
+  <div class="card"><div class="stat">{{ money(data.total_fee) }}</div><div class="stat-label">Total fees</div></div>
+</section>
+<section class="card">
+  {% if data.sessions %}
+  <div class="table-wrap"><table>
+    <tr><th>Vehicle</th><th>Slot</th><th>Entry</th><th>Exit</th><th>Duration</th><th>Fee</th><th>Status</th></tr>
+    {% for s in data.sessions %}
+    <tr><td><strong>{{ s.vehicle_number }}</strong></td><td>{{ s.slot_code }}</td>
+      <td>{{ s.entry_time[:16] }}</td><td>{{ s.exit_time[:16] }}</td><td>{{ fmt_duration(s.minutes) }}</td>
+      <td>{{ money(s.fee) }}</td><td>{{ status(s.status) }}</td></tr>
+    {% endfor %}
+  </table></div>
+  {% else %}<p class="muted">No completed parking sessions yet.</p>{% endif %}
+</section>

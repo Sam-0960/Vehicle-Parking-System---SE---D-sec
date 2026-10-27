@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% from "_macros.html" import money, status with context %}
+{% block title %}Parking history{% endblock %}
+{% block content %}
+<div class="spread">
+  <h1>Parking history</h1>
+  {% if vehicles %}
+  <form method="get" style="max-width:260px">
+    <select name="vehicle" onchange="this.form.submit()">
+      <option value="">All vehicles</option>
+      {% for v in vehicles %}<option value="{{ v.id }}" {% if selected == v.id %}selected{% endif %}>{{ v.number }}</option>{% endfor %}
+    </select>
+  </form>
+  {% endif %}
+</div>
+{% include "history/_table.html" %}
+{% endblock %}
