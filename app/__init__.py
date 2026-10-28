@@ -24,15 +24,15 @@ def create_app(config_object=Config, **overrides) -> Flask:
     app.config.update(overrides)
 
     db.init_app(app)
+    _register_hooks(app)  # first, so g.user is loaded before blueprint hooks run
     _register_blueprints(app)
-    _register_hooks(app)
     _register_error_handlers(app)
     _register_cli(app)
     return app
 
 
 def _register_blueprints(app: Flask) -> None:
-    from app.presentation.routes import auth, availability, fees, history, main, parking, payments, reservations, slots, vehicles
+    from app.presentation.routes import auth, availability, fees, history, main, notifications, parking, payments, reservations, slots, vehicles
     app.register_blueprint(main.bp)
     app.register_blueprint(auth.bp)
     app.register_blueprint(vehicles.bp)
@@ -43,6 +43,7 @@ def _register_blueprints(app: Flask) -> None:
     app.register_blueprint(fees.bp)
     app.register_blueprint(payments.bp)
     app.register_blueprint(history.bp)
+    app.register_blueprint(notifications.bp)
 
 
 def _register_hooks(app: Flask) -> None:

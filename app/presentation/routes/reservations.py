@@ -4,7 +4,7 @@ from flask import Blueprint, flash, g, redirect, render_template, request, url_f
 from app import clock
 from app.data import vehicle_repo
 from app.security import audit, login_required, new_form_key, rate_limit
-from app.services import ServiceError, reservation_service
+from app.services import ServiceError, notification_service, reservation_service
 
 bp = Blueprint("reservations", __name__, url_prefix="/reservations")
 
@@ -45,7 +45,7 @@ def mine():
 
 
 def _after_reserve(reservation):
-    """Hook for the Notification Service (FR-11)."""
+    notification_service.reservation_confirmed(reservation)
 
 
 @bp.route("/<public_id>/cancel", methods=["POST"])
@@ -57,5 +57,6 @@ def cancel(public_id):
         flash(str(e), "error")
     else:
         audit("reservation_cancelled", r["public_id"])
+        notification_service.reservation_cancelled(r)
         flash("Reservation cancelled.", "success")
     return redirect(url_for("reservations.mine"))

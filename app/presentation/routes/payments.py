@@ -4,7 +4,7 @@ from flask import (Blueprint, current_app, flash, g, redirect, render_template, 
 
 from app import clock
 from app.security import audit, login_required, new_form_key, rate_limit
-from app.services import ConflictError, ServiceError, payment_service
+from app.services import ConflictError, ServiceError, notification_service, payment_service
 
 bp = Blueprint("payments", __name__, url_prefix="/payments")
 
@@ -50,7 +50,8 @@ def pay(session_id):
 
 
 def _after_payment(payment, created):
-    """Hook for the Notification Service (FR-11)."""
+    if created:
+        notification_service.payment_status(payment, payment["user_id"])
 
 
 @bp.route("/receipt/<public_id>")
