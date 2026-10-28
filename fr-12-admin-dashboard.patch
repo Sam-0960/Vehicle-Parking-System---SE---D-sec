@@ -1,0 +1,246 @@
+diff --git a/app/__init__.py b/app/__init__.py
+index 60e576f..a33a72d 100644
+--- a/app/__init__.py
++++ b/app/__init__.py
+@@ -32,7 +32,7 @@ def create_app(config_object=Config, **overrides) -> Flask:
+ 
+ 
+ def _register_blueprints(app: Flask) -> None:
+-    from app.presentation.routes import auth, availability, fees, history, main, notifications, parking, payments, reservations, slots, vehicles
++    from app.presentation.routes import admin, auth, availability, fees, history, main, notifications, parking, payments, reservations, slots, vehicles
+     app.register_blueprint(main.bp)
+     app.register_blueprint(auth.bp)
+     app.register_blueprint(vehicles.bp)
+@@ -44,6 +44,7 @@ def _register_blueprints(app: Flask) -> None:
+     app.register_blueprint(payments.bp)
+     app.register_blueprint(history.bp)
+     app.register_blueprint(notifications.bp)
++    app.register_blueprint(admin.bp)
+ 
+ 
+ def _register_hooks(app: Flask) -> None:
+diff --git a/app/data/stats_repo.py b/app/data/stats_repo.py
+new file mode 100644
+index 0000000..661512b
+--- /dev/null
++++ b/app/data/stats_repo.py
+@@ -0,0 +1,43 @@
++"""Data Layer: aggregate queries for the admin dashboard and reports."""
++from app.data.db import get_db
++
++
++def occupancy_by_type():
++    return get_db().execute(
++        """
++        SELECT s.slot_type,
++               count(*) AS total,
++               sum(CASE WHEN p.id IS NOT NULL THEN 1 ELSE 0 END) AS occupied
++        FROM slots s
++        LEFT JOIN parking_sessions p ON p.slot_id = s.id AND p.exit_time IS NULL
++        WHERE s.is_active = 1
++        GROUP BY s.slot_type ORDER BY s.slot_type
++        """
++    ).fetchall()
++
++
++def revenue_between(start: str, end: str) -> float:
++    return get_db().execute(
++        "SELECT coalesce(sum(amount), 0) FROM payments WHERE status = 'success' "
++        "AND created_at >= ? AND created_at < ?",
++        (start, end),
++    ).fetchone()[0]
++
++
++def revenue_total() -> float:
++    return get_db().execute(
++        "SELECT coalesce(sum(amount), 0) FROM payments WHERE status = 'success'"
++    ).fetchone()[0]
++
++
++def unpaid_total():
++    row = get_db().execute(
++        "SELECT count(*) AS n, coalesce(sum(fee), 0) AS amount FROM parking_sessions WHERE status = 'unpaid'"
++    ).fetchone()
++    return row["n"], row["amount"]
++
++
++def sessions_started_between(start: str, end: str) -> int:
++    return get_db().execute(
++        "SELECT count(*) FROM parking_sessions WHERE entry_time >= ? AND entry_time < ?", (start, end)
++    ).fetchone()[0]
+diff --git a/app/presentation/routes/admin.py b/app/presentation/routes/admin.py
+new file mode 100644
+index 0000000..ac98caa
+--- /dev/null
++++ b/app/presentation/routes/admin.py
+@@ -0,0 +1,13 @@
++"""Presentation: administrator dashboard (FR-12)."""
++from flask import Blueprint, render_template
++
++from app.security import admin_required
++from app.services import dashboard_service
++
++bp = Blueprint("admin", __name__, url_prefix="/admin")
++
++
++@bp.route("/")
++@admin_required
++def dashboard():
++    return render_template("admin/dashboard.html", d=dashboard_service.overview())
+diff --git a/app/presentation/templates/admin/dashboard.html b/app/presentation/templates/admin/dashboard.html
+new file mode 100644
+index 0000000..b0f787f
+--- /dev/null
++++ b/app/presentation/templates/admin/dashboard.html
+@@ -0,0 +1,63 @@
++{% extends "base.html" %}
++{% from "_macros.html" import money, status with context %}
++{% block title %}Dashboard{% endblock %}
++{% block content %}
++<h1>Admin Dashboard</h1>
++<section class="grid four">
++  <div class="card"><div class="stat">{{ d.occupancy.pct }}%</div><div class="stat-label">Occupancy · {{ d.occupancy.occupied }} of {{ d.occupancy.total }} slots</div>
++    <div class="bar"><span style="width: {{ d.occupancy.pct }}%"></span></div></div>
++  <div class="card"><div class="stat">{{ d.active|length }}</div><div class="stat-label">Active vehicles · {{ d.entries_today }} entries today</div></div>
++  <div class="card"><div class="stat">{{ d.reservations.count }}</div><div class="stat-label">Open reservations · {{ d.reservations.active_now }} active now</div></div>
++  <div class="card"><div class="stat">{{ money(d.revenue.today) }}</div><div class="stat-label">Revenue today</div></div>
++</section>
++
++<div class="grid two">
++<section class="card">
++  <h2>Revenue</h2>
++  <table>
++    <tr><th>Today</th><td>{{ money(d.revenue.today) }}</td></tr>
++    <tr><th>This month</th><td>{{ money(d.revenue.month) }}</td></tr>
++    <tr><th>All time</th><td>{{ money(d.revenue.total) }}</td></tr>
++    <tr><th>Unpaid</th><td>{{ money(d.revenue.unpaid_amount) }} ({{ d.revenue.unpaid_count }} sessions)</td></tr>
++  </table>
++</section>
++<section class="card">
++  <h2>Occupancy by type</h2>
++  {% for t in d.occupancy.by_type %}
++    <p><strong>{{ t.slot_type|capitalize }}</strong> · {{ t.occupied }} / {{ t.total }}
++      <span class="bar"><span style="width: {{ t.pct }}%"></span></span></p>
++  {% else %}<p class="muted">No slots configured.</p>{% endfor %}
++</section>
++</div>
++
++<section class="card">
++  <h2>Active vehicles</h2>
++  {% if d.active %}
++  <div class="table-wrap"><table>
++    <tr><th>Vehicle</th><th>Owner</th><th>Slot</th><th>Since</th></tr>
++    {% for s in d.active %}<tr><td><strong>{{ s.vehicle_number }}</strong></td><td>{{ s.owner_name }}</td><td>{{ s.slot_code }}</td><td>{{ s.entry_time[5:16] }}</td></tr>{% endfor %}
++  </table></div>
++  {% else %}<p class="muted">No vehicles parked.</p>{% endif %}
++</section>
++
++<div class="grid two">
++<section class="card">
++  <h2>Upcoming reservations</h2>
++  {% if d.reservations.upcoming %}
++  <div class="table-wrap"><table>
++    <tr><th>Slot</th><th>Vehicle</th><th>From</th><th>To</th></tr>
++    {% for r in d.reservations.upcoming %}<tr><td>{{ r.slot_code }}</td><td>{{ r.vehicle_number }}</td><td>{{ r.start_time[5:16] }}</td><td>{{ r.end_time[5:16] }}</td></tr>{% endfor %}
++  </table></div>
++  {% else %}<p class="muted">None.</p>{% endif %}
++</section>
++<section class="card">
++  <h2>Recent security events</h2>
++  {% if d.audit %}
++  <div class="table-wrap"><table>
++    <tr><th>Time</th><th>Event</th><th>By</th></tr>
++    {% for a in d.audit %}<tr><td>{{ a.created_at[5:16] }}</td><td>{{ a.action }}</td><td>{{ a.actor_email or '—' }}</td></tr>{% endfor %}
++  </table></div>
++  {% else %}<p class="muted">No events.</p>{% endif %}
++</section>
++</div>
++{% endblock %}
+diff --git a/app/services/dashboard_service.py b/app/services/dashboard_service.py
+new file mode 100644
+index 0000000..b3e44bb
+--- /dev/null
++++ b/app/services/dashboard_service.py
+@@ -0,0 +1,41 @@
++"""Business Logic: Admin Dashboard (FR-12).
++
++Occupancy, active vehicles, reservations and revenue in one view.
++"""
++from datetime import timedelta
++
++from app import clock
++from app.data import audit_repo, session_repo, stats_repo
++from app.services import reservation_service
++
++
++def overview():
++    now = clock.now()
++    today = now.replace(hour=0, minute=0, second=0)
++    month = today.replace(day=1)
++    tomorrow = today + timedelta(days=1)
++    fmt = clock.to_str
++
++    by_type = [dict(r) for r in stats_repo.occupancy_by_type()]
++    total = sum(r["total"] for r in by_type)
++    occupied = sum(r["occupied"] for r in by_type)
++    for r in by_type:
++        r["pct"] = round(100 * r["occupied"] / r["total"]) if r["total"] else 0
++
++    unpaid_n, unpaid_amount = stats_repo.unpaid_total()
++    reservations = reservation_service.upcoming()
++    active_now = [r for r in reservations if r["start_time"] <= fmt(now)]
++
++    return {
++        "occupancy": {"total": total, "occupied": occupied, "free": total - occupied,
++                      "pct": round(100 * occupied / total) if total else 0, "by_type": by_type},
++        "active": session_repo.all_active(),
++        "reservations": {"upcoming": reservations[:10], "count": len(reservations),
++                         "active_now": len(active_now)},
++        "revenue": {"today": stats_repo.revenue_between(fmt(today), fmt(tomorrow)),
++                    "month": stats_repo.revenue_between(fmt(month), fmt(tomorrow)),
++                    "total": stats_repo.revenue_total(),
++                    "unpaid_count": unpaid_n, "unpaid_amount": unpaid_amount},
++        "entries_today": stats_repo.sessions_started_between(fmt(today), fmt(tomorrow)),
++        "audit": audit_repo.recent(15),
++    }
+diff --git a/tests/test_fr12_dashboard.py b/tests/test_fr12_dashboard.py
+new file mode 100644
+index 0000000..73023f9
+--- /dev/null
++++ b/tests/test_fr12_dashboard.py
+@@ -0,0 +1,35 @@
++"""FR-12 Admin Dashboard - TC19, NFT02."""
++from datetime import datetime
++
++from app import clock
++from tests.conftest import add_slot, add_vehicle, park, pay, reserve, unpark
++
++
++def test_dashboard_shows_occupancy_vehicles_reservations_revenue_TC19(app, admin_client, user_client):
++    clock.set_now(datetime(2026, 10, 26, 9, 0, 0))
++    for code in ("A01", "A02", "A03", "A04"):
++        add_slot(admin_client, code)
++    add_vehicle(user_client, "KA01AB1234")
++    add_vehicle(user_client, "KA02CD5678")
++    park(user_client, app, "KA01AB1234")
++    clock.set_now(datetime(2026, 10, 26, 11, 0, 0))
++    unpark(user_client, app, "KA01AB1234")
++    pay(user_client, app)
++    park(user_client, app, "KA02CD5678")
++    reserve(user_client, app, slot="A04", start="2026-10-26T15:00", end="2026-10-26T16:00",
++            number="KA01AB1234")
++    page = admin_client.get("/admin/").get_data(as_text=True)
++    assert "25%" in page                      # 1 of 4 slots occupied
++    assert "KA02CD5678" in page               # active vehicle
++    assert "Open reservations" in page and ">1<" in page
++    assert "₹100.00" in page                  # revenue today
++    assert "payment_success" in page          # security events feed
++
++
++def test_admin_login_lands_on_dashboard(admin_client):
++    resp = admin_client.get("/")
++    assert resp.headers["Location"].endswith("/admin/")
++
++
++def test_user_cannot_open_dashboard_NFT02(user_client):
++    assert user_client.get("/admin/").status_code == 403

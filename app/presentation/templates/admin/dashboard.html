@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% from "_macros.html" import money, status with context %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<h1>Admin Dashboard</h1>
+<section class="grid four">
+  <div class="card"><div class="stat">{{ d.occupancy.pct }}%</div><div class="stat-label">Occupancy · {{ d.occupancy.occupied }} of {{ d.occupancy.total }} slots</div>
+    <div class="bar"><span style="width: {{ d.occupancy.pct }}%"></span></div></div>
+  <div class="card"><div class="stat">{{ d.active|length }}</div><div class="stat-label">Active vehicles · {{ d.entries_today }} entries today</div></div>
+  <div class="card"><div class="stat">{{ d.reservations.count }}</div><div class="stat-label">Open reservations · {{ d.reservations.active_now }} active now</div></div>
+  <div class="card"><div class="stat">{{ money(d.revenue.today) }}</div><div class="stat-label">Revenue today</div></div>
+</section>
+
+<div class="grid two">
+<section class="card">
+  <h2>Revenue</h2>
+  <table>
+    <tr><th>Today</th><td>{{ money(d.revenue.today) }}</td></tr>
+    <tr><th>This month</th><td>{{ money(d.revenue.month) }}</td></tr>
+    <tr><th>All time</th><td>{{ money(d.revenue.total) }}</td></tr>
+    <tr><th>Unpaid</th><td>{{ money(d.revenue.unpaid_amount) }} ({{ d.revenue.unpaid_count }} sessions)</td></tr>
+  </table>
+</section>
+<section class="card">
+  <h2>Occupancy by type</h2>
+  {% for t in d.occupancy.by_type %}
+    <p><strong>{{ t.slot_type|capitalize }}</strong> · {{ t.occupied }} / {{ t.total }}
+      <span class="bar"><span style="width: {{ t.pct }}%"></span></span></p>
+  {% else %}<p class="muted">No slots configured.</p>{% endfor %}
+</section>
+</div>
+
+<section class="card">
+  <h2>Active vehicles</h2>
+  {% if d.active %}
+  <div class="table-wrap"><table>
+    <tr><th>Vehicle</th><th>Owner</th><th>Slot</th><th>Since</th></tr>
+    {% for s in d.active %}<tr><td><strong>{{ s.vehicle_number }}</strong></td><td>{{ s.owner_name }}</td><td>{{ s.slot_code }}</td><td>{{ s.entry_time[5:16] }}</td></tr>{% endfor %}
+  </table></div>
+  {% else %}<p class="muted">No vehicles parked.</p>{% endif %}
+</section>
+
+<div class="grid two">
+<section class="card">
+  <h2>Upcoming reservations</h2>
+  {% if d.reservations.upcoming %}
+  <div class="table-wrap"><table>
+    <tr><th>Slot</th><th>Vehicle</th><th>From</th><th>To</th></tr>
+    {% for r in d.reservations.upcoming %}<tr><td>{{ r.slot_code }}</td><td>{{ r.vehicle_number }}</td><td>{{ r.start_time[5:16] }}</td><td>{{ r.end_time[5:16] }}</td></tr>{% endfor %}
+  </table></div>
+  {% else %}<p class="muted">None.</p>{% endif %}
+</section>
+<section class="card">
+  <h2>Recent security events</h2>
+  {% if d.audit %}
+  <div class="table-wrap"><table>
+    <tr><th>Time</th><th>Event</th><th>By</th></tr>
+    {% for a in d.audit %}<tr><td>{{ a.created_at[5:16] }}</td><td>{{ a.action }}</td><td>{{ a.actor_email or '—' }}</td></tr>{% endfor %}
+  </table></div>
+  {% else %}<p class="muted">No events.</p>{% endif %}
+</section>
+</div>
+{% endblock %}

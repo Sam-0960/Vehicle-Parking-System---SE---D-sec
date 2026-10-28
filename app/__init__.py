@@ -32,7 +32,7 @@ def create_app(config_object=Config, **overrides) -> Flask:
 
 
 def _register_blueprints(app: Flask) -> None:
-    from app.presentation.routes import auth, availability, fees, history, main, notifications, parking, payments, reservations, slots, vehicles
+    from app.presentation.routes import admin, auth, availability, fees, history, main, notifications, parking, payments, reservations, slots, vehicles
     app.register_blueprint(main.bp)
     app.register_blueprint(auth.bp)
     app.register_blueprint(vehicles.bp)
@@ -44,6 +44,7 @@ def _register_blueprints(app: Flask) -> None:
     app.register_blueprint(payments.bp)
     app.register_blueprint(history.bp)
     app.register_blueprint(notifications.bp)
+    app.register_blueprint(admin.bp)
 
 
 def _register_hooks(app: Flask) -> None:
