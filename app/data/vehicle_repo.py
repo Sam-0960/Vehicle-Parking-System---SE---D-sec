@@ -42,3 +42,29 @@ def has_history(vehicle_id: int) -> bool:
     return get_db().execute(
         "SELECT 1 FROM parking_sessions WHERE vehicle_id = ? LIMIT 1", (vehicle_id,)
     ).fetchone() is not None
+
+
+def _like(term: str) -> str:
+    """Escape LIKE wildcards so user input is matched literally (C-03)."""
+    return "%" + term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+
+
+def search(term: str, number_term: str, limit: int = 50):
+    return get_db().execute(
+        """
+        SELECT v.*, u.name AS user_name, u.email AS user_email,
+               s.code AS parked_in, p.entry_time AS parked_since,
+               (SELECT max(entry_time) FROM parking_sessions WHERE vehicle_id = v.id) AS last_visit,
+               (SELECT count(*) FROM parking_sessions WHERE vehicle_id = v.id) AS visits
+        FROM vehicles v
+        JOIN users u ON u.id = v.user_id
+        LEFT JOIN parking_sessions p ON p.vehicle_id = v.id AND p.exit_time IS NULL
+        LEFT JOIN slots s ON s.id = p.slot_id
+        WHERE v.number LIKE ? ESCAPE '\\'
+           OR v.owner_name LIKE ? ESCAPE '\\'
+           OR u.email LIKE ? ESCAPE '\\'
+           OR s.code = ?
+        ORDER BY v.number LIMIT ?
+        """,
+        (_like(number_term), _like(term), _like(term), term.upper(), limit),
+    ).fetchall()

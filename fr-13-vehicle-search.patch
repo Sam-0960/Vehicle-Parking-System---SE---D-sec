@@ -1,0 +1,240 @@
+diff --git a/app/__init__.py b/app/__init__.py
+index a33a72d..cd5f619 100644
+--- a/app/__init__.py
++++ b/app/__init__.py
+@@ -32,7 +32,7 @@ def create_app(config_object=Config, **overrides) -> Flask:
+ 
+ 
+ def _register_blueprints(app: Flask) -> None:
+-    from app.presentation.routes import admin, auth, availability, fees, history, main, notifications, parking, payments, reservations, slots, vehicles
++    from app.presentation.routes import admin, auth, availability, fees, history, main, notifications, parking, payments, reservations, search, slots, vehicles
+     app.register_blueprint(main.bp)
+     app.register_blueprint(auth.bp)
+     app.register_blueprint(vehicles.bp)
+@@ -45,6 +45,7 @@ def _register_blueprints(app: Flask) -> None:
+     app.register_blueprint(history.bp)
+     app.register_blueprint(notifications.bp)
+     app.register_blueprint(admin.bp)
++    app.register_blueprint(search.bp)
+ 
+ 
+ def _register_hooks(app: Flask) -> None:
+diff --git a/app/data/vehicle_repo.py b/app/data/vehicle_repo.py
+index 15b7d44..0fbe65f 100644
+--- a/app/data/vehicle_repo.py
++++ b/app/data/vehicle_repo.py
+@@ -42,3 +42,29 @@ def has_history(vehicle_id: int) -> bool:
+     return get_db().execute(
+         "SELECT 1 FROM parking_sessions WHERE vehicle_id = ? LIMIT 1", (vehicle_id,)
+     ).fetchone() is not None
++
++
++def _like(term: str) -> str:
++    """Escape LIKE wildcards so user input is matched literally (C-03)."""
++    return "%" + term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
++
++
++def search(term: str, number_term: str, limit: int = 50):
++    return get_db().execute(
++        """
++        SELECT v.*, u.name AS user_name, u.email AS user_email,
++               s.code AS parked_in, p.entry_time AS parked_since,
++               (SELECT max(entry_time) FROM parking_sessions WHERE vehicle_id = v.id) AS last_visit,
++               (SELECT count(*) FROM parking_sessions WHERE vehicle_id = v.id) AS visits
++        FROM vehicles v
++        JOIN users u ON u.id = v.user_id
++        LEFT JOIN parking_sessions p ON p.vehicle_id = v.id AND p.exit_time IS NULL
++        LEFT JOIN slots s ON s.id = p.slot_id
++        WHERE v.number LIKE ? ESCAPE '\\'
++           OR v.owner_name LIKE ? ESCAPE '\\'
++           OR u.email LIKE ? ESCAPE '\\'
++           OR s.code = ?
++        ORDER BY v.number LIMIT ?
++        """,
++        (_like(number_term), _like(term), _like(term), term.upper(), limit),
++    ).fetchall()
+diff --git a/app/presentation/routes/search.py b/app/presentation/routes/search.py
+new file mode 100644
+index 0000000..b8dbfae
+--- /dev/null
++++ b/app/presentation/routes/search.py
+@@ -0,0 +1,33 @@
++"""Presentation: admin vehicle search (FR-13)."""
++from flask import Blueprint, render_template, request
++
++from app.security import admin_required, audit
++from app.services import ServiceError, history_service, search_service
++
++bp = Blueprint("search", __name__, url_prefix="/admin/search")
++
++
++@bp.route("/")
++@admin_required
++def vehicles():
++    q = request.args.get("q", "")
++    results, error = None, None
++    if q:
++        try:
++            results = search_service.search(q)
++        except ServiceError as e:
++            error = str(e)
++        else:
++            audit("vehicle_search", q[:60])
++    return render_template("search/vehicles.html", q=q, results=results, error=error)
++
++
++@bp.route("/vehicle/<int:vehicle_id>")
++@admin_required
++def detail(vehicle_id):
++    try:
++        vehicle, data = search_service.vehicle_detail(vehicle_id)
++    except ServiceError:
++        return render_template("error.html", code=404, message="Vehicle not found."), 404
++    return render_template("search/detail.html", vehicle=vehicle, data=data,
++                           fmt_duration=history_service.fmt_duration)
+diff --git a/app/presentation/templates/search/detail.html b/app/presentation/templates/search/detail.html
+new file mode 100644
+index 0000000..f2745fb
+--- /dev/null
++++ b/app/presentation/templates/search/detail.html
+@@ -0,0 +1,8 @@
++{% extends "base.html" %}
++{% block title %}{{ vehicle.number }}{% endblock %}
++{% block content %}
++<p><a href="{{ url_for('search.vehicles', q=vehicle.number) }}">← Back to search</a></p>
++<h1>{{ vehicle.number }}</h1>
++<p class="muted">{{ vehicle.type|capitalize }} · owner {{ vehicle.owner_name }} · registered {{ vehicle.created_at[:10] }}</p>
++{% include "history/_table.html" %}
++{% endblock %}
+diff --git a/app/presentation/templates/search/vehicles.html b/app/presentation/templates/search/vehicles.html
+new file mode 100644
+index 0000000..0c561b4
+--- /dev/null
++++ b/app/presentation/templates/search/vehicles.html
+@@ -0,0 +1,30 @@
++{% extends "base.html" %}
++{% from "_macros.html" import status with context %}
++{% block title %}Search vehicles{% endblock %}
++{% block content %}
++<h1>Search vehicles</h1>
++<form method="get" class="card row">
++  <label>Vehicle number, owner name, email or slot
++    <input name="q" value="{{ q }}" placeholder="KA01AB1234" autofocus maxlength="60"></label>
++  <div><button type="submit">Search</button></div>
++</form>
++{% if error %}<div class="flash error">{{ error }}</div>{% endif %}
++{% if results is not none %}
++<section class="card">
++  <h2>{{ results|length }} result{{ '' if results|length == 1 else 's' }}</h2>
++  {% if results %}
++  <div class="table-wrap"><table>
++    <tr><th>Vehicle</th><th>Type</th><th>Owner</th><th>Account</th><th>Status</th><th>Visits</th><th></th></tr>
++    {% for v in results %}
++    <tr>
++      <td><strong>{{ v.number }}</strong></td><td>{{ v.type }}</td><td>{{ v.owner_name }}</td><td>{{ v.user_email }}</td>
++      <td>{% if v.parked_in %}{{ status('occupied') }} slot {{ v.parked_in }} since {{ v.parked_since[5:16] }}{% else %}<span class="muted">not parked</span>{% endif %}</td>
++      <td>{{ v.visits }}</td>
++      <td><a href="{{ url_for('search.detail', vehicle_id=v.id) }}">History</a></td>
++    </tr>
++    {% endfor %}
++  </table></div>
++  {% else %}<p class="muted">No vehicle matches "{{ q }}".</p>{% endif %}
++</section>
++{% endif %}
++{% endblock %}
+diff --git a/app/services/search_service.py b/app/services/search_service.py
+new file mode 100644
+index 0000000..903aac6
+--- /dev/null
++++ b/app/services/search_service.py
+@@ -0,0 +1,24 @@
++"""Business Logic: Search Vehicle (FR-13). Admin only.
++
++Matches vehicle number (ignoring spaces/hyphens), owner name, owner email or
++the slot a vehicle is parked in.
++"""
++from app.data import vehicle_repo
++from app.services import ServiceError, history_service
++from app.services.vehicle_service import normalise_number
++
++
++def search(query: str):
++    term = (query or "").strip()
++    if len(term) < 2:
++        raise ServiceError("Type at least 2 characters to search.")
++    if len(term) > 60:
++        raise ServiceError("Search text is too long.")
++    return vehicle_repo.search(term, normalise_number(term))
++
++
++def vehicle_detail(vehicle_id: int):
++    v = vehicle_repo.get(vehicle_id)
++    if v is None:
++        raise ServiceError("Vehicle not found.")
++    return v, history_service.for_vehicle_admin(vehicle_id)
+diff --git a/tests/test_fr13_search.py b/tests/test_fr13_search.py
+new file mode 100644
+index 0000000..b320162
+--- /dev/null
++++ b/tests/test_fr13_search.py
+@@ -0,0 +1,60 @@
++"""FR-13 Search Vehicle - TC18, NFT05, T-03."""
++import time
++
++from app.data.db import get_db
++from tests.conftest import add_slot, add_vehicle, park, vehicle_id
++
++
++def test_search_by_vehicle_number_TC18(app, admin_client, user_client):
++    add_vehicle(user_client, "KA01AB1234")
++    add_vehicle(user_client, "KA02CD5678")
++    page = admin_client.get("/admin/search/?q=KA01AB1234").get_data(as_text=True)
++    assert "<strong>KA01AB1234" in page and "<strong>KA02CD5678" not in page
++    assert "ravi@test.com" in page
++
++
++def test_search_ignores_spacing_and_case(admin_client, user_client):
++    add_vehicle(user_client, "KA01AB1234")
++    assert b"<strong>KA01AB1234" in admin_client.get("/admin/search/?q=ka 01 ab").data
++
++
++def test_search_by_owner_and_slot(app, admin_client, user_client):
++    add_slot(admin_client, "A01")
++    add_vehicle(user_client, "KA01AB1234", owner="Ravi Kumar")
++    park(user_client, app)
++    assert b"<strong>KA01AB1234" in admin_client.get("/admin/search/?q=kumar").data
++    page = admin_client.get("/admin/search/?q=A01").get_data(as_text=True)
++    assert "slot A01" in page
++
++
++def test_wildcards_and_injection_are_literal_T03(app, admin_client, user_client):
++    add_vehicle(user_client, "KA01AB1234")
++    assert b"0 results" in admin_client.get("/admin/search/?q=%25%25").data
++    assert b"0 results" in admin_client.get("/admin/search/?q=' OR 1=1 --").data
++    with app.app_context():
++        assert get_db().execute("SELECT count(*) FROM vehicles").fetchone()[0] == 1
++
++
++def test_short_query_rejected(admin_client):
++    assert b"at least 2 characters" in admin_client.get("/admin/search/?q=K").data
++
++
++def test_vehicle_detail_page(app, admin_client, user_client):
++    add_vehicle(user_client)
++    assert b"KA01AB1234" in admin_client.get(f"/admin/search/vehicle/{vehicle_id(app)}").data
++
++
++def test_user_cannot_search(user_client):
++    assert user_client.get("/admin/search/?q=KA").status_code == 403
++
++
++def test_search_scales_NFT05(app, admin_client):
++    with app.app_context():
++        db = get_db()
++        uid = db.execute("SELECT id FROM users").fetchone()["id"]
++        db.executemany("INSERT INTO vehicles (user_id, number, type, owner_name) VALUES (?, ?, 'car', ?)",
++                       [(uid, f"KA{(i % 99) + 1:02d}ZZ{i:04d}", f"Owner {i}") for i in range(5000)])
++    start = time.perf_counter()
++    resp = admin_client.get("/admin/search/?q=KA05ZZ")
++    assert resp.status_code == 200 and b"<strong>KA05ZZ" in resp.data
++    assert time.perf_counter() - start < 1.0

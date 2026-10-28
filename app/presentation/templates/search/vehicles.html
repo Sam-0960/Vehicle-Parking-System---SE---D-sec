@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status with context %}
+{% block title %}Search vehicles{% endblock %}
+{% block content %}
+<h1>Search vehicles</h1>
+<form method="get" class="card row">
+  <label>Vehicle number, owner name, email or slot
+    <input name="q" value="{{ q }}" placeholder="KA01AB1234" autofocus maxlength="60"></label>
+  <div><button type="submit">Search</button></div>
+</form>
+{% if error %}<div class="flash error">{{ error }}</div>{% endif %}
+{% if results is not none %}
+<section class="card">
+  <h2>{{ results|length }} result{{ '' if results|length == 1 else 's' }}</h2>
+  {% if results %}
+  <div class="table-wrap"><table>
+    <tr><th>Vehicle</th><th>Type</th><th>Owner</th><th>Account</th><th>Status</th><th>Visits</th><th></th></tr>
+    {% for v in results %}
+    <tr>
+      <td><strong>{{ v.number }}</strong></td><td>{{ v.type }}</td><td>{{ v.owner_name }}</td><td>{{ v.user_email }}</td>
+      <td>{% if v.parked_in %}{{ status('occupied') }} slot {{ v.parked_in }} since {{ v.parked_since[5:16] }}{% else %}<span class="muted">not parked</span>{% endif %}</td>
+      <td>{{ v.visits }}</td>
+      <td><a href="{{ url_for('search.detail', vehicle_id=v.id) }}">History</a></td>
+    </tr>
+    {% endfor %}
+  </table></div>
+  {% else %}<p class="muted">No vehicle matches "{{ q }}".</p>{% endif %}
+</section>
+{% endif %}
+{% endblock %}
