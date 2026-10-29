@@ -1,10 +1,12 @@
 """Data Layer: in-app notifications."""
+from app import clock
 from app.data.db import get_db
 
 
 def add(user_id: int, kind: str, message: str) -> None:
     get_db().execute(
-        "INSERT INTO notifications (user_id, kind, message) VALUES (?, ?, ?)", (user_id, kind, message)
+        "INSERT INTO notifications (user_id, kind, message, created_at) VALUES (?, ?, ?, ?)",
+        (user_id, kind, message, clock.to_str(clock.now())),
     )
 
 

@@ -1,4 +1,5 @@
 """Data Layer: payments. Card numbers and CVV are never stored (C-06)."""
+from app import clock
 from app.data.db import get_db
 
 
@@ -24,9 +25,9 @@ def for_session(session_id: int):
 
 def insert(conn, public_id, session_id, amount, method, reference, status, key) -> None:
     conn.execute(
-        "INSERT INTO payments (public_id, session_id, amount, method, reference, status, idempotency_key) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (public_id, session_id, amount, method, reference, status, key),
+        "INSERT INTO payments (public_id, session_id, amount, method, reference, status, idempotency_key, "
+        "created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (public_id, session_id, amount, method, reference, status, key, clock.to_str(clock.now())),
     )
 
 

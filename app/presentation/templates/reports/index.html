@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% from "_macros.html" import money with context %}
+{% block title %}Reports{% endblock %}
+{% block content %}
+{% set q = {'start': r.start|string, 'end': r.end|string} %}
+<div class="spread">
+  <h1>Reports</h1>
+  <form method="get" class="row" style="max-width:520px">
+    <label>From <input type="date" name="start" value="{{ r.start }}"></label>
+    <label>To <input type="date" name="end" value="{{ r.end }}"></label>
+    <div><button type="submit">Update</button></div>
+  </form>
+</div>
+<p class="muted">{{ r.start }} to {{ r.end }}</p>
+
+<section class="grid four">
+  <div class="card"><div class="stat">{{ r.usage.total_sessions }}</div><div class="stat-label">Parking sessions</div></div>
+  <div class="card"><div class="stat">{{ money(r.revenue.total) }}</div><div class="stat-label">Revenue · {{ r.revenue.payments }} payments</div></div>
+  <div class="card"><div class="stat">{{ r.activity|length }}</div><div class="stat-label">Distinct vehicles</div></div>
+  <div class="card"><div class="stat">{{ r.revenue.failed }}</div><div class="stat-label">Failed payments</div></div>
+</section>
+
+<section class="card">
+  <div class="spread"><h2>Parking usage</h2><a class="btn small ghost" href="{{ url_for('reports.download', kind='usage', **q) }}">Download CSV</a></div>
+  {% if r.usage.peak_hours %}<p>Busiest entry hours:
+    {% for p in r.usage.peak_hours %}<strong>{{ '%02d'|format(p.hour) }}:00</strong> ({{ p.entries }}){% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+  <div class="grid two">
+    <div class="table-wrap"><table>
+      <tr><th>Date</th><th>Sessions</th><th>Avg stay</th></tr>
+      {% for d in r.usage.by_day %}<tr><td>{{ d.day }}</td><td>{{ d.sessions }}</td><td>{{ (d.avg_minutes|int ~ ' min') if d.avg_minutes else '—' }}</td></tr>
+      {% else %}<tr><td colspan="3" class="muted">No sessions in this period.</td></tr>{% endfor %}
+    </table></div>
+    <div class="table-wrap"><table>
+      <tr><th>Slot</th><th>Sessions</th><th>Hours used</th></tr>
+      {% for s in r.usage.slots %}<tr><td>{{ s.code }} <span class="muted">{{ s.slot_type }}</span></td><td>{{ s.sessions }}</td><td>{{ s.hours }}</td></tr>{% endfor %}
+    </table></div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="spread"><h2>Revenue</h2><a class="btn small ghost" href="{{ url_for('reports.download', kind='revenue', **q) }}">Download CSV</a></div>
+  <div class="grid three">
+    <div class="table-wrap"><table>
+      <tr><th>Date</th><th>Amount</th></tr>
+      {% for d in r.revenue.by_day %}<tr><td>{{ d.day }}</td><td>{{ money(d.amount) }}</td></tr>
+      {% else %}<tr><td colspan="2" class="muted">No payments.</td></tr>{% endfor %}
+    </table></div>
+    <div class="table-wrap"><table>
+      <tr><th>Method</th><th>Amount</th></tr>
+      {% for m in r.revenue.by_method %}<tr><td>{{ m.method }}</td><td>{{ money(m.amount) }}</td></tr>{% endfor %}
+    </table></div>
+    <div class="table-wrap"><table>
+      <tr><th>Vehicle type</th><th>Amount</th></tr>
+      {% for t in r.revenue.by_type %}<tr><td>{{ t.vehicle_type }}</td><td>{{ money(t.amount) }}</td></tr>{% endfor %}
+    </table></div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="spread"><h2>Vehicle activity</h2><a class="btn small ghost" href="{{ url_for('reports.download', kind='activity', **q) }}">Download CSV</a></div>
+  <div class="table-wrap"><table>
+    <tr><th>Vehicle</th><th>Owner</th><th>Visits</th><th>Hours</th><th>Fees</th><th>Last entry</th></tr>
+    {% for v in r.activity %}<tr><td><strong>{{ v.number }}</strong> <span class="muted">{{ v.type }}</span></td><td>{{ v.owner_name }}</td>
+      <td>{{ v.visits }}</td><td>{{ v.hours }}</td><td>{{ money(v.fees) }}</td><td>{{ v.last_entry[:16] }}</td></tr>
+    {% else %}<tr><td colspan="6" class="muted">No vehicle activity.</td></tr>{% endfor %}
+  </table></div>
+</section>
+{% endblock %}
