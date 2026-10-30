@@ -61,7 +61,7 @@ def peak_hours(start: str, end: str, limit: int = 3):
         "GROUP BY hour ORDER BY entries DESC, hour LIMIT ?", (start, end, limit)).fetchall()
 
 
-def slot_utilisation(start: str, end: str):
+def slot_utilisation(start: str, end: str, until: str):
     return get_db().execute(
         """
         SELECT s.code, s.slot_type, count(p.id) AS sessions,
@@ -69,7 +69,7 @@ def slot_utilisation(start: str, end: str):
         FROM slots s LEFT JOIN parking_sessions p ON p.slot_id = s.id
              AND p.entry_time >= ? AND p.entry_time < ?
         GROUP BY s.id ORDER BY sessions DESC, s.code
-        """, (end, start, end)).fetchall()
+        """, (until, start, end)).fetchall()
 
 
 def revenue_by_day(start: str, end: str):
@@ -100,7 +100,7 @@ def failed_payments(start: str, end: str) -> int:
         (start, end)).fetchone()[0]
 
 
-def vehicle_activity(start: str, end: str, limit: int = 50):
+def vehicle_activity(start: str, end: str, until: str, limit: int = 50):
     return get_db().execute(
         """
         SELECT v.number, v.type, v.owner_name, count(p.id) AS visits,
@@ -109,4 +109,4 @@ def vehicle_activity(start: str, end: str, limit: int = 50):
         FROM parking_sessions p JOIN vehicles v ON v.id = p.vehicle_id
         WHERE p.entry_time >= ? AND p.entry_time < ?
         GROUP BY v.id ORDER BY visits DESC, hours DESC LIMIT ?
-        """, (end, start, end, limit)).fetchall()
+        """, (until, start, end, limit)).fetchall()

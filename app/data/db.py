@@ -60,3 +60,12 @@ def init_app(app) -> None:
     Path(app.config["DATABASE"]).parent.mkdir(parents=True, exist_ok=True)
     with app.app_context():
         init_db()
+
+
+def backup_to(path: str) -> None:
+    """Consistent online copy of the database (NFR-03), safe while the app is running."""
+    target = sqlite3.connect(path)
+    try:
+        get_db().backup(target)
+    finally:
+        target.close()

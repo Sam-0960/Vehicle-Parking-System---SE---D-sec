@@ -24,8 +24,8 @@
 <section class="card">
   <h2>Occupancy by type</h2>
   {% for t in d.occupancy.by_type %}
-    <p><strong>{{ t.slot_type|capitalize }}</strong> · {{ t.occupied }} / {{ t.total }}
-      <span class="bar"><span style="width: {{ t.pct }}%"></span></span></p>
+    <p><strong>{{ t.slot_type|capitalize }}</strong> · {{ t.occupied }} / {{ t.total }}</p>
+    <div class="bar"><span style="width: {{ t.pct }}%"></span></div>
   {% else %}<p class="muted">No slots configured.</p>{% endfor %}
 </section>
 </div>

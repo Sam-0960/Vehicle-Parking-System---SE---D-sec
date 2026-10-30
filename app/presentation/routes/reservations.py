@@ -1,4 +1,6 @@
 """Presentation: reservations (FR-07)."""
+from datetime import timedelta
+
 from flask import Blueprint, flash, g, redirect, render_template, request, url_for
 
 from app import clock
@@ -41,7 +43,7 @@ def mine():
                            reservations=reservation_service.mine(g.user), form=f,
                            form_key=new_form_key(),
                            default_start=now.strftime("%Y-%m-%dT%H:%M"),
-                           default_end=now.replace(hour=min(now.hour + 2, 23)).strftime("%Y-%m-%dT%H:%M"))
+                           default_end=(now + timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M"))
 
 
 def _after_reserve(reservation):

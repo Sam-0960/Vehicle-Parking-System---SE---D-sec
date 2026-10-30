@@ -1,4 +1,7 @@
 """Command-line helpers: flask --app run <command>."""
+from datetime import datetime
+from pathlib import Path
+
 import click
 
 from app.data import db, user_repo
@@ -33,3 +36,36 @@ def register(app) -> None:
             raise click.ClickException("No account with that email.")
         user_repo.set_role(row["id"], "admin")
         click.echo(f"{email} is now an administrator.")
+
+    @app.cli.command("backup")
+    @click.option("--dir", "directory", default="backups", show_default=True)
+    def backup(directory):
+        """Write a timestamped copy of the database (NFR-03)."""
+        Path(directory).mkdir(parents=True, exist_ok=True)
+        path = Path(directory) / f"parking-{datetime.now():%Y%m%d-%H%M%S}.db"
+        db.backup_to(str(path))
+        click.echo(f"Backup written to {path}")
+
+    @app.cli.command("seed-demo")
+    def seed_demo():
+        """Load the Human Test Plan data for a demo. Never run this in production."""
+        from app.services import slot_service, vehicle_service
+        from app.data import slot_repo
+        created = []
+        for email, name in (("ravi@test.com", "Ravi"), ("admin@test.com", "Parking Admin")):
+            if user_repo.get_auth_by_email(email) is None:
+                auth_service.register(name, email, "Park@123", "Park@123",
+                                      role="admin" if email.startswith("admin") else "user")
+                created.append(email)
+        for code, kind in (("A01", "car"), ("A02", "car"), ("A03", "car"), ("A04", "car"),
+                           ("M01", "bike"), ("M02", "bike"), ("T01", "truck")):
+            if slot_repo.get_by_code(code) is None:
+                slot_service.add(code, kind)
+        ravi = user_repo.get_auth_by_email("ravi@test.com")
+        for number in ("KA01AB1234", "KA02CD5678", "KA03EF9012"):
+            try:
+                vehicle_service.add(ravi["id"], number, "car", "Ravi")
+            except ServiceError:
+                pass
+        click.echo("Demo data loaded. Logins (password Park@123): ravi@test.com, admin@test.com")
+        click.echo("Remove these accounts before any real deployment (C-08).")

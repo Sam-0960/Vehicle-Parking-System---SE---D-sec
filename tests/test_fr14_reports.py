@@ -59,3 +59,13 @@ def test_bad_range(activity):
 def test_user_cannot_see_reports(user_client):
     assert user_client.get("/admin/reports/").status_code == 403
     assert user_client.get("/admin/reports/revenue.csv").status_code == 403
+
+
+def test_open_session_hours_count_until_now(app, admin_client, user_client):
+    add_slot(admin_client, "A01")
+    add_vehicle(user_client)
+    clock.set_now(datetime(2026, 10, 26, 9, 0, 0))
+    park(user_client, app)
+    clock.set_now(datetime(2026, 10, 26, 12, 0, 0))
+    usage = admin_client.get("/admin/reports/usage.csv?start=2026-10-26&end=2026-10-26").get_data(as_text=True)
+    assert "A01,car,1,3.0" in usage
