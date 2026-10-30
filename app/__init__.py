@@ -32,6 +32,8 @@ def create_app(config_object=Config, **overrides) -> Flask:
 
 
 def _register_blueprints(app: Flask) -> None:
+    from app.presentation.routes import health
+    app.register_blueprint(health.bp)
     from app.presentation.routes import admin, auth, availability, fees, history, main, notifications, parking, payments, reports, reservations, search, slots, vehicles
     app.register_blueprint(main.bp)
     app.register_blueprint(auth.bp)
@@ -66,6 +68,12 @@ def _register_hooks(app: Flask) -> None:
         resp.headers.setdefault("X-Content-Type-Options", "nosniff")
         resp.headers.setdefault("X-Frame-Options", "DENY")
         resp.headers.setdefault("Referrer-Policy", "same-origin")
+        resp.headers.setdefault(
+            "Content-Security-Policy",
+            "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data:; form-action 'self'; frame-ancestors 'none'")
+        if app.config["SESSION_COOKIE_SECURE"]:
+            resp.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
         return resp
 
     @app.context_processor

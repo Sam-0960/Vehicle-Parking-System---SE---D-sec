@@ -28,18 +28,19 @@ def parse_range(start_raw: str, end_raw: str):
 def build(start, end):
     s = f"{start} 00:00:00"
     e = f"{end + timedelta(days=1)} 00:00:00"  # end date is inclusive
+    until = min(e, clock.to_str(clock.now()))  # vehicles still parked count up to now
     usage = stats_repo.usage_by_day(s, e)
     revenue = stats_repo.revenue_by_day(s, e)
     return {
         "start": start, "end": end,
         "usage": {"by_day": usage, "total_sessions": sum(r["sessions"] for r in usage),
-                  "peak_hours": stats_repo.peak_hours(s, e), "slots": stats_repo.slot_utilisation(s, e)},
+                  "peak_hours": stats_repo.peak_hours(s, e), "slots": stats_repo.slot_utilisation(s, e, until)},
         "revenue": {"by_day": revenue, "by_method": stats_repo.revenue_by_method(s, e),
                     "by_type": stats_repo.revenue_by_vehicle_type(s, e),
                     "total": sum(r["amount"] for r in revenue),
                     "payments": sum(r["payments"] for r in revenue),
                     "failed": stats_repo.failed_payments(s, e)},
-        "activity": stats_repo.vehicle_activity(s, e),
+        "activity": stats_repo.vehicle_activity(s, e, until),
     }
 
 
