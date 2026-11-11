@@ -1,0 +1,60 @@
+........................................................................ [ 54%]
+.............................................................            [100%]
+=============================== tests coverage ================================
+_______________ coverage: platform win32, python 3.12.7-final-0 _______________
+
+Name                                       Stmts   Miss Branch BrPart  Cover   Missing
+--------------------------------------------------------------------------------------
+app\__init__.py                               64      1      6      1    97%   76
+app\cli.py                                    55     34     12      0    31%   15-16, 24-28, 34-38, 44-47, 52-71
+app\clock.py                                  11      0      0      0   100%
+app\config.py                                 25      0      0      0   100%
+app\data\__init__.py                           0      0      0      0   100%
+app\data\audit_repo.py                         6      0      0      0   100%
+app\data\db.py                                40      0      4      0   100%
+app\data\notification_repo.py                 16      0      0      0   100%
+app\data\payment_repo.py                      12      1      0      0    92%   21
+app\data\rate_repo.py                          7      0      0      0   100%
+app\data\reservation_repo.py                  22      0      0      0   100%
+app\data\session_repo.py                      32      1      4      0    97%   73
+app\data\slot_repo.py                         19      0      0      0   100%
+app\data\stats_repo.py                        28      0      0      0   100%
+app\data\user_repo.py                         22      1      0      0    95%   46
+app\data\vehicle_repo.py                      20      0      0      0   100%
+app\presentation\__init__.py                   0      0      0      0   100%
+app\presentation\routes\__init__.py            0      0      0      0   100%
+app\presentation\routes\admin.py               8      0      0      0   100%
+app\presentation\routes\auth.py               55      3     14      3    91%   18, 26, 45
+app\presentation\routes\availability.py       20      0      0      0   100%
+app\presentation\routes\fees.py               21      1      2      0    96%   13
+app\presentation\routes\health.py             10      2      0      0    80%   13-14
+app\presentation\routes\history.py            14      0      0      0   100%
+app\presentation\routes\main.py               13      0      6      1    95%   12->14
+app\presentation\routes\notifications.py      17      0      2      0   100%
+app\presentation\routes\parking.py            47      1      6      1    96%   35, 55->57
+app\presentation\routes\payments.py           45      0      6      1    98%   53->exit
+app\presentation\routes\reports.py            25      0      0      0   100%
+app\presentation\routes\reservations.py       44      1      6      0    98%   27
+app\presentation\routes\search.py             24      2      2      1    88%   15->22, 30-31
+app\presentation\routes\slots.py              43      5      4      0    89%   26, 40-41, 53-54
+app\presentation\routes\vehicles.py           41      2      4      0    96%   38-39
+app\security.py                               59      1     18      1    97%   68
+app\services\__init__.py                       2      0      0      0   100%
+app\services\auth_service.py                  53      5     22      5    87%   23, 25, 32, 34, 36
+app\services\availability_service.py          13      1      4      0    94%   22
+app\services\dashboard_service.py             19      0      2      0   100%
+app\services\fee_service.py                   33      6     10      3    79%   22, 36, 46, 49-50, 52
+app\services\history_service.py               19      0      4      0   100%
+app\services\notification_service.py          29      0      6      0   100%
+app\services\parking_service.py               61      4     22      3    92%   19, 39, 48, 87
+app\services\payment_gateway.py               14      0      0      0   100%
+app\services\payment_service.py               82      7     40      7    89%   35, 40, 49, 60, 87, 93, 100
+app\services\report_service.py                54      3     20      1    95%   19-20, 24
+app\services\reservation_service.py           73      9     30      7    84%   23-24, 33, 35, 46, 49, 51, 64, 75
+app\services\search_service.py                15      2      6      2    81%   16, 23
+app\services\slot_service.py                  48      9     24      9    75%   24, 32, 36->34, 45, 47, 49, 57, 59, 61-62
+app\services\vehicle_service.py               43      4     16      4    86%   26, 29, 56, 63
+--------------------------------------------------------------------------------------
+TOTAL                                       1423    106    302     50    90%
+- Generated html report: file:///C:/Users/avsam/vps/docs/unit_test_report.html -
+133 passed in 121.42s (0:02:01)
